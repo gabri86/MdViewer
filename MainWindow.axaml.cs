@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
@@ -29,6 +31,17 @@ public partial class MainWindow : Window
     MarkdownRenderer? _renderer;
     bool _loading;
     bool _suppressTree;
+    bool _suppressCombo;
+    bool _forceClose;
+
+    bool _editing;
+    bool _dirty;
+    bool _settingText;
+    bool _textStale;
+    string _sourceText = "";
+    Encoding _encoding = new UTF8Encoding(false);
+    readonly MarkdownColorizer _colorizer = new();
+    readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
 
     List<(Avalonia.Controls.SelectableTextBlock Block, int Start, int Length)> _matches = new();
     int _matchIndex = -1;
@@ -39,6 +52,25 @@ public partial class MainWindow : Window
         _projects = new ObservableCollection<Project>(_state.Projects.Where(p => Directory.Exists(p.Path)));
         ProjectCombo.ItemsSource = _projects;
         ApplyTheme();
+
+        _colorizer.Dark = _state.Dark;
+        Editor.TextArea.TextView.LineTransformers.Add(_colorizer);
+        Editor.TextChanged += OnEditorChanged;
+        Editor.TextArea.Caret.PositionChanged += (_, _) =>
+        {
+            if (!_editing || _settingText) return;
+            _previewTimer.Stop();
+            _previewTimer.Start();
+        };
+        EditButton.Click += (_, _) => ToggleEdit();
+        SaveButton.Click += (_, _) => SaveFile();
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            if (!_editing || _currentFile == null) return;
+            if (_textStale) RefreshPreview();
+            else RestoreLine(Editor.TextArea.Caret.Line - 1, 0);
+        };
 
         MainGrid.ColumnDefinitions[0].Width = new GridLength(Math.Clamp(_state.TreeWidth, 120, 800));
 
@@ -54,7 +86,7 @@ public partial class MainWindow : Window
         ThemeButton.Click += (_, _) => ToggleTheme();
         ProjectCombo.SelectionChanged += (_, _) =>
         {
-            if (ProjectCombo.SelectedItem is Project p) OpenProject(p);
+            if (!_suppressCombo && ProjectCombo.SelectedItem is Project p) OpenProject(p);
         };
         Tree.SelectionChanged += OnTreeSelection;
         Scroll.ScrollChanged += (_, _) =>
@@ -68,9 +100,19 @@ public partial class MainWindow : Window
             _saveTimer.Stop();
             SavePosition();
         };
-        KeyDown += OnKeyDown;
-        Closing += (_, _) =>
+        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        Closing += (_, e) =>
         {
+            if (_dirty && !_forceClose)
+            {
+                e.Cancel = true;
+                Guard(() =>
+                {
+                    _forceClose = true;
+                    Close();
+                });
+                return;
+            }
             _state.TreeWidth = MainGrid.ColumnDefinitions[0].ActualWidth;
             SavePosition();
         };
@@ -105,12 +147,14 @@ public partial class MainWindow : Window
             PersistProjects();
         }
         ProjectCombo.SelectedItem = project;
-        if (_project != project) OpenProject(project);
     }
 
     void RemoveProject()
     {
         if (_project == null) return;
+        if (!Guard(RemoveProject)) return;
+        _editing = false;
+        ApplyEditLayout();
         var removed = _project;
         _project = null;
         _currentFile = null;
@@ -134,6 +178,7 @@ public partial class MainWindow : Window
 
     void OpenProject(Project project)
     {
+        if (!Guard(() => OpenProject(project))) return;
         SavePosition();
         _project = project;
         _state.LastProjectPath = project.Path;
@@ -146,6 +191,8 @@ public partial class MainWindow : Window
         var file = project.LastFile != null && File.Exists(project.LastFile) ? project.LastFile : FirstFile(project.Path);
         if (file == null)
         {
+            _editing = false;
+            ApplyEditLayout();
             Host.Child = null;
             Status.Text = "La carpeta no contiene archivos .md";
             UpdateNavButtons();
@@ -207,6 +254,7 @@ public partial class MainWindow : Window
 
     void OpenFile(string path, int line, double delta, string? anchor, bool pushHistory)
     {
+        if (!Guard(() => OpenFile(path, line, delta, anchor, pushHistory))) return;
         if (_currentFile != null) SavePosition();
         if (pushHistory)
         {
@@ -223,6 +271,7 @@ public partial class MainWindow : Window
     {
         var target = _historyIndex + step;
         if (target < 0 || target >= _history.Count) return;
+        if (!Guard(() => Navigate(step))) return;
         if (_historyIndex >= 0) _history[_historyIndex] = CaptureEntry() ?? _history[_historyIndex];
         SavePosition();
         _historyIndex = target;
@@ -240,24 +289,52 @@ public partial class MainWindow : Window
     void LoadFile(string path, int line, double delta, string? anchor)
     {
         string text;
-        try { text = File.ReadAllText(path); }
+        Encoding encoding;
+        try
+        {
+            using var reader = new StreamReader(path, new UTF8Encoding(false), true);
+            text = reader.ReadToEnd();
+            encoding = reader.CurrentEncoding;
+        }
         catch (Exception ex)
         {
             Status.Text = $"No se pudo abrir {path}: {ex.Message}";
             return;
         }
 
-        _loading = true;
+        _encoding = encoding;
+        _sourceText = text;
         _currentFile = path;
+        _dirty = false;
+        if (_editing)
+        {
+            SetEditorText(text);
+            var editorLine = Math.Clamp(line + 1, 1, Math.Max(1, Editor.LineCount));
+            Editor.TextArea.Caret.Line = editorLine;
+            Editor.ScrollToLine(editorLine);
+        }
+        ShowDocument(text, path, line, delta, anchor);
+    }
+
+    void SetEditorText(string text)
+    {
+        _settingText = true;
+        try { Editor.Text = text; }
+        finally { _settingText = false; }
+        _colorizer.Invalidate();
+        _textStale = false;
+    }
+
+    void ShowDocument(string text, string path, int line, double delta, string? anchor)
+    {
+        _loading = true;
         var doc = Markdown.Parse(text, Pipeline);
         _renderer = new MarkdownRenderer(System.IO.Path.GetDirectoryName(path)!, _state.Dark, HandleLink);
         Host.Child = _renderer.Render(doc);
         _matches.Clear();
         _matchIndex = -1;
 
-        var rel = _project != null ? System.IO.Path.GetRelativePath(_project.Path, path) : path;
-        Title = $"{_project?.Name} — {rel} — MdViewer";
-        Status.Text = rel;
+        UpdateTitle();
         SelectInTree(path);
 
         Dispatcher.UIThread.Post(() =>
@@ -271,6 +348,146 @@ public partial class MainWindow : Window
             if (SearchBar.IsVisible) RunSearch();
             SavePosition();
         }, DispatcherPriority.Loaded);
+    }
+
+    void UpdateTitle()
+    {
+        if (_currentFile == null) return;
+        var rel = _project != null ? System.IO.Path.GetRelativePath(_project.Path, _currentFile) : _currentFile;
+        Title = $"{(_dirty ? "● " : "")}{_project?.Name} — {rel} — MdViewer";
+        Status.Text = _dirty ? $"{rel} — cambios sin guardar" : _editing ? $"{rel} — editando" : rel;
+        SaveButton.IsEnabled = _dirty;
+    }
+
+    // ---------- Edición ----------
+
+    void ApplyEditLayout()
+    {
+        var cols = Body.ColumnDefinitions;
+        EditorPane.IsVisible = EditSplitter.IsVisible = _editing;
+        cols[0].Width = _editing ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        cols[1].Width = _editing ? new GridLength(3) : new GridLength(0);
+        EditButton.Content = _editing ? "👁 Ver" : "✏ Editar";
+        ToolTip.SetTip(EditButton, _editing ? "Volver a la vista (Ctrl+E)" : "Modo edición (Ctrl+E)");
+        SaveButton.IsVisible = _editing;
+        SaveButton.IsEnabled = _dirty;
+    }
+
+    void ToggleEdit()
+    {
+        if (_currentFile == null) return;
+        if (_editing) ExitEdit();
+        else EnterEdit();
+    }
+
+    void EnterEdit()
+    {
+        var (line, delta) = _renderer != null ? CurrentPosition() : (0, 0);
+        _editing = true;
+        ApplyEditLayout();
+        SetEditorText(_sourceText);
+        _dirty = false;
+        UpdateTitle();
+        Dispatcher.UIThread.Post(() =>
+        {
+            Scroll.UpdateLayout();
+            RestoreLine(line, delta);
+            var editorLine = Math.Clamp(line + 1, 1, Math.Max(1, Editor.LineCount));
+            Editor.TextArea.Caret.Line = editorLine;
+            Editor.ScrollToLine(editorLine);
+            Editor.TextArea.Focus();
+        }, DispatcherPriority.Loaded);
+    }
+
+    void ExitEdit()
+    {
+        if (!Guard(ExitEdit)) return;
+        var (line, delta) = _renderer != null ? CurrentPosition() : (0, 0);
+        _editing = false;
+        _previewTimer.Stop();
+        ApplyEditLayout();
+        ShowDocument(_sourceText, _currentFile!, line, delta, null);
+    }
+
+    void OnEditorChanged(object? sender, EventArgs e)
+    {
+        _colorizer.Invalidate();
+        if (_settingText || !_editing) return;
+        _dirty = true;
+        _textStale = true;
+        UpdateTitle();
+        _previewTimer.Stop();
+        _previewTimer.Start();
+    }
+
+    void RefreshPreview()
+    {
+        if (!_editing || _currentFile == null) return;
+        _textStale = false;
+        ShowDocument(Editor.Text, _currentFile, Editor.TextArea.Caret.Line - 1, 0, null);
+    }
+
+    bool SaveFile()
+    {
+        if (!_editing || _currentFile == null) return true;
+        try
+        {
+            var text = Editor.Text;
+            File.WriteAllText(_currentFile, text, _encoding);
+            _sourceText = text;
+            _dirty = false;
+            UpdateTitle();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Status.Text = $"No se pudo guardar: {ex.Message}";
+            return false;
+        }
+    }
+
+    // Devuelve true si se puede continuar; si hay cambios sin guardar pregunta y ejecuta la acción después.
+    bool Guard(Action action)
+    {
+        if (!_dirty) return true;
+        _ = GuardAsync(action);
+        return false;
+    }
+
+    async Task GuardAsync(Action action)
+    {
+        var choice = await ConfirmDialog.ShowAsync(this, System.IO.Path.GetFileName(_currentFile ?? ""));
+        if (choice == SaveChoice.Save && !SaveFile()) choice = SaveChoice.Cancel;
+        if (choice == SaveChoice.Cancel)
+        {
+            RestoreSelectionUi();
+            return;
+        }
+        _dirty = false;
+        action();
+    }
+
+    void RestoreSelectionUi()
+    {
+        if (_currentFile != null) SelectInTree(_currentFile);
+        if (_project != null && !ReferenceEquals(ProjectCombo.SelectedItem, _project))
+        {
+            _suppressCombo = true;
+            ProjectCombo.SelectedItem = _project;
+            _suppressCombo = false;
+        }
+    }
+
+    void OnFormat(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: string action }) ApplyFormat(action);
+    }
+
+    void ApplyFormat(string action)
+    {
+        if (!_editing) return;
+        MdFormat.Apply(Editor, action);
+        Editor.TextArea.Focus();
     }
 
     double YOf(Control c) => c.TranslatePoint(default, Host)?.Y ?? 0;
@@ -320,7 +537,7 @@ public partial class MainWindow : Window
 
     void SavePosition()
     {
-        if (_project == null || _currentFile == null || _renderer == null || _loading) return;
+        if (_project == null || _currentFile == null || _renderer == null || _loading || _dirty) return;
         var (line, delta) = CurrentPosition();
         _project.LastFile = _currentFile;
         _project.LastLine = line;
@@ -385,10 +602,12 @@ public partial class MainWindow : Window
     {
         _state.Dark = !_state.Dark;
         ApplyTheme();
+        _colorizer.Dark = _state.Dark;
+        Editor.TextArea.TextView.Redraw();
         if (_currentFile != null)
         {
             var (line, delta) = _renderer != null ? CurrentPosition() : (0, 0);
-            LoadFile(_currentFile, line, delta, null);
+            ShowDocument(_editing ? Editor.Text : _sourceText, _currentFile, line, delta, null);
         }
         StateStore.Save(_state);
     }
@@ -457,6 +676,28 @@ public partial class MainWindow : Window
 
     void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.KeyModifiers == KeyModifiers.Control && _currentFile != null && e.Key == Key.E)
+        {
+            ToggleEdit();
+            e.Handled = true;
+            return;
+        }
+        if (_editing && e.KeyModifiers == KeyModifiers.Control)
+        {
+            var action = e.Key switch { Key.B => "bold", Key.I => "italic", Key.K => "link", _ => null };
+            if (e.Key == Key.S)
+            {
+                SaveFile();
+                e.Handled = true;
+                return;
+            }
+            if (action != null)
+            {
+                ApplyFormat(action);
+                e.Handled = true;
+                return;
+            }
+        }
         if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             ToggleSearch(true);

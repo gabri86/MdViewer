@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="using:AvaloniaEdit"
         x:Class="MdViewer.MainWindow"
         Title="MdViewer" Icon="avares://MdViewer/Assets/app.ico" Width="1200" Height="800" MinWidth="600" MinHeight="400">
   <Grid RowDefinitions="Auto,*,Auto">
@@ -10,6 +11,8 @@
         <ComboBox Name="ProjectCombo" Width="240" PlaceholderText="Seleccioná un proyecto" />
         <Button Name="OpenButton" Content="📂 Agregar carpeta…" />
         <Button Name="RemoveButton" Content="Quitar proyecto" />
+        <Button Name="EditButton" Content="✏ Editar" ToolTip.Tip="Modo edición (Ctrl+E)" />
+        <Button Name="SaveButton" Content="💾 Guardar" ToolTip.Tip="Guardar (Ctrl+S)" IsVisible="False" IsEnabled="False" />
         <Button Name="SearchButton" Content="🔍 Buscar" ToolTip.Tip="Ctrl+F" />
         <Button Name="ThemeButton" Content="🌓 Tema" />
       </StackPanel>
@@ -35,9 +38,44 @@
             <Button Name="CloseSearch" Content="✕" />
           </StackPanel>
         </Border>
-        <ScrollViewer Name="Scroll" Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
-          <Border Name="Host" Margin="26,16,26,48" MaxWidth="1000" HorizontalAlignment="Stretch" />
-        </ScrollViewer>
+        <Grid Name="Body" Grid.Row="1" ColumnDefinitions="0,0,*">
+          <DockPanel Name="EditorPane" Grid.Column="0" IsVisible="False">
+            <Border DockPanel.Dock="Top" Background="{DynamicResource SideBarBg}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
+              <WrapPanel Orientation="Horizontal" Margin="6,4">
+                  <Button Classes="fmt" Tag="bold" ToolTip.Tip="Negrita (Ctrl+B)" Click="OnFormat"><TextBlock Text="B" FontWeight="Bold" /></Button>
+                  <Button Classes="fmt" Tag="italic" ToolTip.Tip="Cursiva (Ctrl+I)" Click="OnFormat"><TextBlock Text="I" FontStyle="Italic" /></Button>
+                  <Button Classes="fmt" Tag="strike" ToolTip.Tip="Tachado" Click="OnFormat"><TextBlock Text="S" TextDecorations="Strikethrough" /></Button>
+                  <Border Classes="sep" />
+                  <Button Classes="fmt" Tag="h1" ToolTip.Tip="Título 1" Click="OnFormat"><TextBlock Text="H1" FontWeight="Bold" /></Button>
+                  <Button Classes="fmt" Tag="h2" ToolTip.Tip="Título 2" Click="OnFormat"><TextBlock Text="H2" FontWeight="Bold" /></Button>
+                  <Button Classes="fmt" Tag="h3" ToolTip.Tip="Título 3" Click="OnFormat"><TextBlock Text="H3" FontWeight="Bold" /></Button>
+                  <Border Classes="sep" />
+                  <Button Classes="fmt" Tag="bullets" ToolTip.Tip="Lista con viñetas" Click="OnFormat"><TextBlock Text="• ≡" /></Button>
+                  <Button Classes="fmt" Tag="numbers" ToolTip.Tip="Lista numerada" Click="OnFormat"><TextBlock Text="1." /></Button>
+                  <Button Classes="fmt" Tag="tasks" ToolTip.Tip="Lista de tareas" Click="OnFormat"><TextBlock Text="☑" /></Button>
+                  <Button Classes="fmt" Tag="quote" ToolTip.Tip="Cita" Click="OnFormat"><TextBlock Text="❝" /></Button>
+                  <Border Classes="sep" />
+                  <Button Classes="fmt" Tag="code" ToolTip.Tip="Código en línea" Click="OnFormat"><TextBlock Text="&lt;/&gt;" FontFamily="Consolas" /></Button>
+                  <Button Classes="fmt" Tag="codeblock" ToolTip.Tip="Bloque de código" Click="OnFormat"><TextBlock Text="{}{ }" FontFamily="Consolas" /></Button>
+                  <Border Classes="sep" />
+                  <Button Classes="fmt" Tag="link" ToolTip.Tip="Enlace (Ctrl+K)" Click="OnFormat"><TextBlock Text="🔗" /></Button>
+                  <Button Classes="fmt" Tag="image" ToolTip.Tip="Imagen" Click="OnFormat"><TextBlock Text="🖼" /></Button>
+                  <Button Classes="fmt" Tag="table" ToolTip.Tip="Tabla" Click="OnFormat"><TextBlock Text="▦" /></Button>
+                  <Button Classes="fmt" Tag="hr" ToolTip.Tip="Línea horizontal" Click="OnFormat"><TextBlock Text="―" /></Button>
+                </WrapPanel>
+            </Border>
+            <ae:TextEditor Name="Editor" Background="{DynamicResource EditorBg}" Foreground="{DynamicResource Fg}"
+                           FontFamily="Cascadia Mono, Consolas, Menlo, DejaVu Sans Mono, monospace" FontSize="14"
+                           ShowLineNumbers="True" WordWrap="True" Padding="8,6"
+                           HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                           LineNumbersForeground="#858585" />
+          </DockPanel>
+          <GridSplitter Name="EditSplitter" Grid.Column="1" Width="3" IsVisible="False" />
+          <ScrollViewer Name="Scroll" Grid.Column="2" HorizontalScrollBarVisibility="Disabled">
+            <Border Name="Host" Margin="26,16,26,48" MaxWidth="1000" HorizontalAlignment="Stretch" />
+          </ScrollViewer>
+        </Grid>
       </Grid>
     </Grid>
 

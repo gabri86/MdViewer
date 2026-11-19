@@ -11,6 +11,7 @@ Visor de escritorio de archivos Markdown (`.md`) con estética de Visual Studio 
 - **Navegación:** árbol de archivos lateral, enlaces relativos entre `.md` (incluidos anclas `#título`) e historial atrás/adelante.
 - **Enlaces externos:** `http`, `https` y `mailto` se abren en el navegador o programa del sistema.
 - **Búsqueda en el documento** (`Ctrl+F`).
+- **Modo edición** con vista previa en vivo lado a lado, barra de formato (negrita, cursiva, tachado, títulos, listas, tareas, citas, código, enlaces, imágenes, tablas y línea horizontal), resaltado de sintaxis Markdown y aviso si hay cambios sin guardar.
 - **Resaltado de sintaxis** en bloques de código.
 - **Tema claro y oscuro** inspirados en VS Code (Light+ y Dark+).
 - Tablas, citas, listas, tareas, imágenes locales, negrita, cursiva y tachado.
@@ -43,6 +44,9 @@ Ambos incluyen el runtime de .NET: **no necesitás instalar nada más**. Los has
 | `Shift+Enter` | Resultado anterior |
 | `Esc` | Cerrar la búsqueda |
 | `Alt+←` / `Alt+→` | Atrás / adelante |
+| `Ctrl+E` | Alternar entre vista y edición |
+| `Ctrl+S` | Guardar (en edición) |
+| `Ctrl+B` / `Ctrl+I` / `Ctrl+K` | Negrita / cursiva / enlace (en edición) |
 
 ## Datos guardados
 
