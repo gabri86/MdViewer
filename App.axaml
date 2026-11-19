@@ -1,0 +1,96 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MdViewer.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{DynamicResource EditorBg}" />
+      <Setter Property="Foreground" Value="{DynamicResource Fg}" />
+      <Setter Property="FontFamily" Value="Segoe UI, Ubuntu, Cantarell, Helvetica Neue, sans-serif" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="Background" Value="{DynamicResource ButtonBg}" />
+      <Setter Property="Foreground" Value="{DynamicResource Fg}" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource ButtonBgHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource Fg}" />
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <Style Selector="TreeViewItem">
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TreeViewItem /template/ Border#PART_LayoutRoot:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ListHover}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource ListSelected}" />
+    </Style>
+    <Style Selector="TreeViewItem:selected /template/ Border#PART_LayoutRoot:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ListSelected}" />
+    </Style>
+
+    <Style Selector="TextBox">
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="6,3" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="8,2" />
+    </Style>
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="GridSplitter:pointerover">
+      <Setter Property="Background" Value="{DynamicResource Accent}" />
+    </Style>
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="EditorBg" Color="#1E1E1E" />
+          <SolidColorBrush x:Key="SideBarBg" Color="#252526" />
+          <SolidColorBrush x:Key="BarBg" Color="#333333" />
+          <SolidColorBrush x:Key="StatusBg" Color="#007ACC" />
+          <SolidColorBrush x:Key="StatusFg" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="Fg" Color="#CCCCCC" />
+          <SolidColorBrush x:Key="Accent" Color="#007FD4" />
+          <SolidColorBrush x:Key="BorderBrush" Color="#3C3C3C" />
+          <SolidColorBrush x:Key="ButtonBg" Color="#3C3C3C" />
+          <SolidColorBrush x:Key="ButtonBgHover" Color="#505050" />
+          <SolidColorBrush x:Key="ListHover" Color="#2A2D2E" />
+          <SolidColorBrush x:Key="ListSelected" Color="#094771" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="EditorBg" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="SideBarBg" Color="#F3F3F3" />
+          <SolidColorBrush x:Key="BarBg" Color="#DDDDDD" />
+          <SolidColorBrush x:Key="StatusBg" Color="#007ACC" />
+          <SolidColorBrush x:Key="StatusFg" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="Fg" Color="#3B3B3B" />
+          <SolidColorBrush x:Key="Accent" Color="#005FB8" />
+          <SolidColorBrush x:Key="BorderBrush" Color="#E5E5E5" />
+          <SolidColorBrush x:Key="ButtonBg" Color="#E8E8E8" />
+          <SolidColorBrush x:Key="ButtonBgHover" Color="#D0D0D0" />
+          <SolidColorBrush x:Key="ListHover" Color="#E8E8E8" />
+          <SolidColorBrush x:Key="ListSelected" Color="#E4E6F1" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>
