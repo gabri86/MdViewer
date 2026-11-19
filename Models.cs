@@ -18,6 +18,8 @@ public class AppState
     public string? LastProjectPath { get; set; }
     public bool Dark { get; set; } = true;
     public double TreeWidth { get; set; } = 260;
+    public bool ShowTree { get; set; } = true;
+    public bool ShowPreview { get; set; } = true;
 }
 
 public static class StateStore

@@ -35,6 +35,8 @@ public partial class MainWindow : Window
     bool _forceClose;
 
     bool _editing;
+    bool _showTree = true;
+    bool _showPreview = true;
     bool _dirty;
     bool _settingText;
     bool _textStale;
@@ -67,12 +69,16 @@ public partial class MainWindow : Window
         _previewTimer.Tick += (_, _) =>
         {
             _previewTimer.Stop();
-            if (!_editing || _currentFile == null) return;
+            if (!_editing || _currentFile == null || !_showPreview) return;
             if (_textStale) RefreshPreview();
             else RestoreLine(Editor.TextArea.Caret.Line - 1, 0);
         };
 
-        MainGrid.ColumnDefinitions[0].Width = new GridLength(Math.Clamp(_state.TreeWidth, 120, 800));
+        _showTree = _state.ShowTree;
+        _showPreview = _state.ShowPreview;
+        ApplyTreeLayout();
+        TreeToggle.Click += (_, _) => ToggleTree();
+        PreviewToggle.Click += (_, _) => TogglePreview();
 
         BackButton.Click += (_, _) => Navigate(-1);
         ForwardButton.Click += (_, _) => Navigate(1);
@@ -113,7 +119,7 @@ public partial class MainWindow : Window
                 });
                 return;
             }
-            _state.TreeWidth = MainGrid.ColumnDefinitions[0].ActualWidth;
+            if (_showTree) _state.TreeWidth = MainGrid.ColumnDefinitions[0].ActualWidth;
             SavePosition();
         };
         Opened += (_, _) =>
@@ -364,13 +370,46 @@ public partial class MainWindow : Window
     void ApplyEditLayout()
     {
         var cols = Body.ColumnDefinitions;
-        EditorPane.IsVisible = EditSplitter.IsVisible = _editing;
+        var preview = _editing && _showPreview;
+        EditorPane.IsVisible = _editing;
+        EditSplitter.IsVisible = preview;
+        Scroll.IsVisible = !_editing || _showPreview;
         cols[0].Width = _editing ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
-        cols[1].Width = _editing ? new GridLength(3) : new GridLength(0);
+        cols[1].Width = preview ? new GridLength(3) : new GridLength(0);
+        cols[2].Width = Scroll.IsVisible ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         EditButton.Content = _editing ? "👁 Ver" : "✏ Editar";
         ToolTip.SetTip(EditButton, _editing ? "Volver a la vista (Ctrl+E)" : "Modo edición (Ctrl+E)");
         SaveButton.IsVisible = _editing;
         SaveButton.IsEnabled = _dirty;
+        PreviewToggle.IsVisible = _editing;
+        PreviewToggle.Content = _showPreview ? "🗗 Ocultar vista previa" : "🗗 Mostrar vista previa";
+    }
+
+    void ApplyTreeLayout()
+    {
+        SidePane.IsVisible = TreeSplitter.IsVisible = _showTree;
+        MainGrid.ColumnDefinitions[0].Width = _showTree ? new GridLength(Math.Clamp(_state.TreeWidth, 120, 800)) : new GridLength(0);
+        MainGrid.ColumnDefinitions[1].Width = _showTree ? new GridLength(3) : new GridLength(0);
+    }
+
+    void ToggleTree()
+    {
+        if (_showTree) _state.TreeWidth = MainGrid.ColumnDefinitions[0].ActualWidth;
+        _showTree = !_showTree;
+        _state.ShowTree = _showTree;
+        ApplyTreeLayout();
+        StateStore.Save(_state);
+    }
+
+    void TogglePreview()
+    {
+        if (!_editing) return;
+        _showPreview = !_showPreview;
+        _state.ShowPreview = _showPreview;
+        ApplyEditLayout();
+        StateStore.Save(_state);
+        if (_showPreview) Dispatcher.UIThread.Post(RefreshPreview, DispatcherPriority.Loaded);
+        else _previewTimer.Stop();
     }
 
     void ToggleEdit()
@@ -390,8 +429,11 @@ public partial class MainWindow : Window
         UpdateTitle();
         Dispatcher.UIThread.Post(() =>
         {
-            Scroll.UpdateLayout();
-            RestoreLine(line, delta);
+            if (_showPreview)
+            {
+                Scroll.UpdateLayout();
+                RestoreLine(line, delta);
+            }
             var editorLine = Math.Clamp(line + 1, 1, Math.Max(1, Editor.LineCount));
             Editor.TextArea.Caret.Line = editorLine;
             Editor.ScrollToLine(editorLine);
@@ -402,7 +444,9 @@ public partial class MainWindow : Window
     void ExitEdit()
     {
         if (!Guard(ExitEdit)) return;
-        var (line, delta) = _renderer != null ? CurrentPosition() : (0, 0);
+        var (line, delta) = _editing && !_showPreview
+            ? (Editor.TextArea.Caret.Line - 1, 0)
+            : _renderer != null ? CurrentPosition() : (0, 0);
         _editing = false;
         _previewTimer.Stop();
         ApplyEditLayout();
@@ -538,7 +582,8 @@ public partial class MainWindow : Window
     void SavePosition()
     {
         if (_project == null || _currentFile == null || _renderer == null || _loading || _dirty) return;
-        var (line, delta) = CurrentPosition();
+                if (_editing && !_showPreview) return;
+                var (line, delta) = CurrentPosition();
         _project.LastFile = _currentFile;
         _project.LastLine = line;
         _project.LastDelta = delta;
@@ -676,6 +721,18 @@ public partial class MainWindow : Window
 
     void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.B)
+        {
+            ToggleTree();
+            e.Handled = true;
+            return;
+        }
+        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.P && _editing)
+        {
+            TogglePreview();
+            e.Handled = true;
+            return;
+        }
         if (e.KeyModifiers == KeyModifiers.Control && _currentFile != null && e.Key == Key.E)
         {
             ToggleEdit();

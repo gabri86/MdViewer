@@ -46,6 +46,8 @@ Ambos incluyen el runtime de .NET: **no necesitás instalar nada más**. Los has
 | `Alt+←` / `Alt+→` | Atrás / adelante |
 | `Ctrl+E` | Alternar entre vista y edición |
 | `Ctrl+S` | Guardar (en edición) |
+| `Ctrl+Shift+B` | Mostrar/ocultar la barra lateral (☰) |
+| `Ctrl+Shift+P` | Mostrar/ocultar la vista previa en edición (editor a pantalla completa) |
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+K` | Negrita / cursiva / enlace (en edición) |
 
 ## Datos guardados
