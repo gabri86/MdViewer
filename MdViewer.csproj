@@ -13,7 +13,9 @@
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets\app.ico" />
+    <AvaloniaResource Include="Assets\mermaid.min.js" />
     <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Controls.WebView" Version="11.4.1" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />

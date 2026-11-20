@@ -100,6 +100,9 @@ public class MarkdownRenderer
                 return RenderList(l);
             case Table t:
                 return RenderTable(t);
+            case FencedCodeBlock fc when MermaidService.Instance != null
+                && fc.Info?.Split(' ')[0].Equals("mermaid", StringComparison.OrdinalIgnoreCase) == true:
+                return RenderMermaid(CodeText(fc));
             case FencedCodeBlock fc:
                 return RenderCode(CodeText(fc), fc.Info);
             case CodeBlock cb:
@@ -178,6 +181,48 @@ public class MarkdownRenderer
             r++;
         }
         return grid;
+    }
+
+    Control RenderMermaid(string code)
+    {
+        var service = MermaidService.Instance!;
+        var host = new Border { HorizontalAlignment = HorizontalAlignment.Left };
+
+        Control Picture(MermaidService.MermaidImage img) => new Image
+        {
+            Source = img.Bitmap,
+            Width = img.Width,
+            Height = img.Height,
+            Stretch = Stretch.Uniform
+        };
+
+        if (service.TryGetCached(code, _dark, out var cached) && cached != null)
+        {
+            host.Child = Picture(cached);
+            return host;
+        }
+
+        host.Child = new TextBlock { Text = "Renderizando diagrama…", Opacity = 0.6, Margin = new Thickness(0, 8) };
+        _ = RenderAsync();
+        return host;
+
+        async Task RenderAsync()
+        {
+            var (img, error) = await service.RenderAsync(code, _dark);
+            if (img != null) { host.Child = Picture(img); return; }
+
+            var panel = new StackPanel { Spacing = 6 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "⚠ No se pudo renderizar el diagrama Mermaid: " + error,
+                Foreground = new SolidColorBrush(Color.Parse(_dark ? "#F48771" : "#A1260D")),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 12
+            });
+            panel.Children.Add(RenderCode(code, null));
+            host.HorizontalAlignment = HorizontalAlignment.Stretch;
+            host.Child = panel;
+        }
     }
 
     Control RenderCode(string code, string? lang)

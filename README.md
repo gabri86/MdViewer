@@ -13,6 +13,7 @@ Visor de escritorio de archivos Markdown (`.md`) con estética de Visual Studio 
 - **Búsqueda en el documento** (`Ctrl+F`).
 - **Modo edición** con vista previa en vivo lado a lado, barra de formato (negrita, cursiva, tachado, títulos, listas, tareas, citas, código, enlaces, imágenes, tablas y línea horizontal), resaltado de sintaxis Markdown y aviso si hay cambios sin guardar.
 - **Resaltado de sintaxis** en bloques de código.
+- **Diagramas Mermaid:** los bloques ```` ```mermaid ```` se dibujan como imagen (flowchart, secuencia, clases, estado, ER, Gantt, etc.), siguen el tema claro/oscuro y funcionan sin internet. Si un diagrama tiene errores, se muestra el mensaje y el código. Usa [Mermaid](https://mermaid.js.org/) (MIT) dentro de un WebView oculto: en Windows requiere WebView2 Runtime (viene con Windows 10/11).
 - **Tema claro y oscuro** inspirados en VS Code (Light+ y Dark+).
 - Tablas, citas, listas, tareas, imágenes locales, negrita, cursiva y tachado.
 

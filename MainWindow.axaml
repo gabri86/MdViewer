@@ -3,7 +3,7 @@
         xmlns:ae="using:AvaloniaEdit"
         x:Class="MdViewer.MainWindow"
         Title="MdViewer" Icon="avares://MdViewer/Assets/app.ico" Width="1200" Height="800" MinWidth="600" MinHeight="400">
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid Name="Root" RowDefinitions="Auto,*,Auto">
     <Border Grid.Row="0" Background="{DynamicResource BarBg}" Padding="8,6">
       <StackPanel Orientation="Horizontal" Spacing="6">
         <Button Name="TreeToggle" Content="☰" ToolTip.Tip="Mostrar/ocultar barra lateral (Ctrl+Shift+B)" />

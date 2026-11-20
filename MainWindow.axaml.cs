@@ -55,6 +55,9 @@ public partial class MainWindow : Window
         ProjectCombo.ItemsSource = _projects;
         ApplyTheme();
 
+        try { MermaidService.Instance = new MermaidService(Root); }
+        catch { MermaidService.Instance = null; }
+
         _colorizer.Dark = _state.Dark;
         Editor.TextArea.TextView.LineTransformers.Add(_colorizer);
         Editor.TextChanged += OnEditorChanged;
